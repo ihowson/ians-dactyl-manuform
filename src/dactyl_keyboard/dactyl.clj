@@ -1,3 +1,9 @@
+; to build
+; cd ~/Sync/dactyl-keyboard
+; lein repl
+; > (load-file "src/dactyl_keyboard/dactyl.clj")
+
+
 (ns dactyl-keyboard.dactyl
   (:refer-clojure :exclude [use import])
   (:require [clojure.core.matrix :refer [array matrix mmul]]
@@ -23,7 +29,12 @@
 ; original
 ; (def tenting-angle (/ π 12))            ; or, change this for more precise tenting control
 ; ian: i like more tilt (and will add more after print, but want to make space for thumb cluster)
-(def tenting-angle (/ π 6))            ; or, change this for more precise tenting control
+; v3; about 62mm high
+; (def tenting-angle (/ π 6))            ; or, change this for more precise tenting control
+; v4; about 71mm high
+; (def tenting-angle (/ π 4.5))            ; or, change this for more precise tenting control
+; v4; about 71mm high
+(def tenting-angle (/ π 5))            ; or, change this for more precise tenting control
 
 (def column-style 
   (if (> nrows 5) :orthographic :standard))  ; options include :standard, :orthographic, and :fixed
@@ -55,7 +66,8 @@
 ; (def keyboard-z-offset 2.7)               ; controls overall height; original=9 with centercol=3; use 16 for centercol=2
 ; (def keyboard-z-offset 1.7)               ; controls overall height; original=9 with centercol=3; use 16 for centercol=2
 ; (def keyboard-z-offset 3.9)               ; pi / 8 tilt controls overall height; original=9 with centercol=3; use 16 for centercol=2
-(def keyboard-z-offset 10)               ; pi / 7 tilt controls overall height; original=9 with centercol=3; use 16 for centercol=2
+; (def keyboard-z-offset 10)               ; pi / 7 tilt controls overall height; original=9 with centercol=3; use 16 for centercol=2
+(def keyboard-z-offset 15)               ; pi / 7 tilt controls overall height; original=9 with centercol=3; use 16 for centercol=2
 
 (def extra-width 2.5)                   ; extra space between the base of keys; original= 2
 (def extra-height 1.0)                  ; original= 0.5
@@ -92,13 +104,13 @@
 ;; Switch Hole ;;
 ;;;;;;;;;;;;;;;;;
 
-; ian: chocs seem to fit this well; the tolerances on them are tight enough that i'm not confident trying to make them snap in hard
-; ian: first print was 14.4, which is way too loose; stuff just falls out
-(def keyswitch-height 14.1) ;; Was 14.1, then 14.25
-(def keyswitch-width 14.1)
+; 14.1 works fine. they could be a fraction tighter, so 14.00 for this print.
+; chocs fit this a little more loosely but it's not a big deal
+(def keyswitch-height 14.0)
+(def keyswitch-width 14.0)
 
 (def sa-profile-key-height 12.7)
-(def choc-profile-key-height 6.7)  ; FIXME: eyeballed this, it's definitely wrong . also not used anywhere
+(def choc-profile-key-height 6.7)  ; eyeballed this, but it's close enough given the keycaps i'm using
 
 (def plate-thickness 3.5)
 (def mount-width (+ keyswitch-width 3))
@@ -367,13 +379,15 @@
 
 ; it's about 38 degrees total range of motion, so 9.5 degrees per modifier. call it 10
 
+; these need to go further away (y) and be spaced a little more; don't convex them towards themselves
+
 (defn thumb-tr-place [shape]
   (->> shape
-       (rotate (deg2rad  20) [1 0 0])
+       (rotate (deg2rad  25) [1 0 0])
        (rotate (deg2rad -30) [0 1 0])
        (rotate (deg2rad  3) [0 0 1])
        (translate thumborigin)
-       (translate [-17 -9 1])
+       (translate [-17 -9 4])
        ))
 
 (defn thumb-tl-place [shape]
@@ -383,7 +397,7 @@
        (rotate (deg2rad 32.3) [0 0 1])
 
        (translate thumborigin)
-       (translate [-39 -13 -10])))
+       (translate [-39 -13 -6])))
 
 (defn thumb-ml-place [shape]
   (->> shape
@@ -391,7 +405,7 @@
        (rotate (deg2rad -20) [0 1 0])
        (rotate (deg2rad  51) [0 0 1])
        (translate thumborigin)
-       (translate [-53 -23 -19])))
+       (translate [-56 -25 -14])))
 
 (defn thumb-bl-place [shape]
   (->> shape
@@ -400,7 +414,7 @@
        (rotate (deg2rad  70) [0 0 1])
        (translate thumborigin)
        ; NOTE: choc
-       (translate [-63 -39 -28])
+       (translate [-68 -42 -22])
        ))
 
 ; duplicate missing defns so we don't need to redo the mesh
@@ -421,10 +435,10 @@
 
 (defn thumb-cap-shapes [shape]
   (union
-   (thumb-tr-place (choc-cap 1))
-   (thumb-tl-place (choc-cap 1))
-   (thumb-ml-place (choc-cap 1))
-   (thumb-bl-place (choc-cap 1))))
+   (thumb-tr-place (sa-cap 1))
+   (thumb-tl-place (sa-cap 1))
+   (thumb-ml-place (sa-cap 1))
+   (thumb-bl-place (sa-cap 1))))
 
 (defn thumb-15x-layout [shape] ())
 
@@ -571,8 +585,7 @@
 (defn bottom-hull [& p]
   (hull p (bottom 0.001 p)))
 
-; (def left-wall-x-offset 10)
-(def left-wall-x-offset 7)
+(def left-wall-x-offset 10)
 (def left-wall-z-offset  4)
 
 (defn left-key-position [row direction]
@@ -716,17 +729,17 @@
 ; micro is 18mm across, 4mm from top of usb to bottom of pcb
 (def usb-holder
     (->> (cube (+ (first usb-holder-size) usb-holder-thickness) (second usb-holder-size) (+ (last usb-holder-size) usb-holder-thickness))
-         (translate [(first usb-holder-position) (second usb-holder-position) (/ (+ 5 (last usb-holder-size) usb-holder-thickness) 1.5)])))
+         (translate [(first usb-holder-position) (second usb-holder-position) (/ (+ 9 (last usb-holder-size) usb-holder-thickness) 1.5)])))
 (def usb-holder-hole
     (->> (apply cube usb-holder-size-pad)
-         (translate [(first usb-holder-position) (second usb-holder-position) (/ (+ 5 (last usb-holder-size) usb-holder-thickness) 1.5)])))
+         (translate [(first usb-holder-position) (second usb-holder-position) (/ (+ 9 (last usb-holder-size) usb-holder-thickness) 1.5)])))
 (def micro-hull-cutout
-    (->> (apply cube [18.5 5.5 6.5])
-         (translate [(first usb-holder-position) (- (second usb-holder-position) 2.5) (/ (+ 5 (last usb-holder-size) usb-holder-thickness) 1.5)])))
+    (->> (apply cube [18.1 5.5 6.5])
+         (translate [(first usb-holder-position) (- (second usb-holder-position) 2.5) (/ (+ 9 (last usb-holder-size) usb-holder-thickness) 1.5)])))
 
 (def tent-platform
   (union (->> (cube 12 12 3)
-              (translate [-58 52 1.5]))
+              (translate [-53 52 1.5]))
          (->> (cube 12 12 3)
               (translate [-87 -60 1.5]))
 ))
@@ -752,12 +765,12 @@
 ; trrs box is 6x5mm, barrel is 5mm dia and 2mm deep
 (def trrs-hole
   (union
-    (->> (union (binding [*fn* 36] (cylinder [2.75 2.75] 8)))  ; little bit of kerf
+    (->> (union (binding [*fn* 36] (cylinder [2.70 2.70] 8)))  ; little bit of kerf
          (rotate (/ π 2) [1 0 0])
-         (translate [(+ -15 (first usb-holder-position)) (- (second usb-holder-position) 1) (/ (+ 7 (last usb-holder-size) usb-holder-thickness) 2)]))
+         (translate [(+ -15 (first usb-holder-position)) (- (second usb-holder-position) 1) (/ (+ 12 (last usb-holder-size) usb-holder-thickness) 2)]))
     ; hold the box
-    (->> (union (apply cube [6.4 5 5.4]))  ;depth here matters; has been eyeballed
-         (translate [(+ -15 (first usb-holder-position)) (- (second usb-holder-position) 2) (/ (+ 7 (last usb-holder-size) usb-holder-thickness) 2)]))
+    (->> (union (apply cube [6.4 4.90 5.4]))  ;depth here matters; has been eyeballed
+         (translate [(+ -15 (first usb-holder-position)) (- (second usb-holder-position) 2) (/ (+ 12 (last usb-holder-size) usb-holder-thickness) 2)]))
     )
 )
 
@@ -765,11 +778,11 @@
     (union
       (->> (union (binding [*fn* 36] (cylinder [3.5 3.5] 8)))
           (rotate (/ π 2) [1 0 0])
-          (translate [(+ -12 (first usb-holder-position)) (- (second usb-holder-position) 1) (/ (+ 41 (last usb-holder-size) usb-holder-thickness) 2)]))
+          (translate [(+ -6 (first usb-holder-position)) (- (second usb-holder-position) 1) (/ (+ 60 (last usb-holder-size) usb-holder-thickness) 2)]))
       ; thinner wall
       (->> (union (binding [*fn* 36] (cylinder [5 5] 5))) ;; depth here matters; has been eyeballed
           (rotate (/ π 2) [1 0 0])
-          (translate [(+ -12 (first usb-holder-position)) (- (second usb-holder-position) 2) (/ (+ 41 (last usb-holder-size) usb-holder-thickness) 2)]))
+          (translate [(+ -6 (first usb-holder-position)) (- (second usb-holder-position) 2) (/ (+ 60 (last usb-holder-size) usb-holder-thickness) 2)]))
     )
 )
 
