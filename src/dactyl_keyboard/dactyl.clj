@@ -3,6 +3,10 @@
 ; lein repl
 ; > (load-file "src/dactyl_keyboard/dactyl.clj")
 
+; or
+; make stl   # full slow build of all SCAD and STL files
+; make scad  # quick build of SCAD files only
+
 
 (ns dactyl-keyboard.dactyl
   (:refer-clojure :exclude [use import])
@@ -34,6 +38,7 @@
 ; v4; about 71mm high
 ; (def tenting-angle (/ π 4.5))            ; or, change this for more precise tenting control
 ; v4; about 71mm high
+; v5: leave it the same, but print some big wedges to glue underneath. it's too hard to assemble if it's all one unit.
 (def tenting-angle (/ π 5))            ; or, change this for more precise tenting control
 
 (def column-style 
@@ -73,12 +78,7 @@
 (def extra-height 1.0)                  ; original= 0.5
 
 ; TODO: the top part is way too big and just makes thing large; see if you can reduce it
-; (def wall-z-offset -15)                 ; length of the first downward-sloping part of the wall (negative)
 (def wall-z-offset -7)                 ; length of the first downward-sloping part of the wall (negative)
-; original
-; (def wall-xy-offset 5)                  ; offset in the x and/or y direction for the first downward-sloping part of the wall (negative)
-; ian: reduce this as it makes the keyboard lower while tilted (removes the outward curve on the right edge)
-; TODO: I prefer the look of 5mm on the left edge and really only want to change the right edge; not sure how to do that yet
 (def wall-xy-offset 5)                  ; offset in the x and/or y direction for the first downward-sloping part of the wall (negative)
 (def wall-thickness 3)                  ; wall thickness parameter; originally 5
 
@@ -223,10 +223,7 @@
 
 (defn is-choc [column row]
   (or
-    ; (= column 4) (= column 5)))
-    (= column 5)))
-    ; (and (= column 5) (.contains [1 2 3] row))))  ; CHOCMOD
-    ; (and (= column 4) (= row 2)))  ; CHOCMOD
+    (and (= column 5) (.contains [1 2 3] row)))) ; Top row will fit a Cherry switch, and this helps to pull in the width a fraction.
 
 (defn apply-key-geometry [translate-fn rotate-x-fn rotate-y-fn column row shape]
   (let [column-angle (* β (- centercol column))   
@@ -304,18 +301,9 @@
                row rows
                :when (or (.contains [2 3] column)
                          (not= row lastrow))]
-          ;  (->> (sa-cap (if (= column 5) 1 1))
-          ;  (->> (if (and = row 1) (= column 5) (choc-cap 1) (sa-cap 1))
-          ;  (->> (is-choc column row)  ; CHOCMOD
            (->> (if (is-choc column row) (choc-cap 1) (sa-cap 1))  ; CHOCMOD
-          ;  (->> (if (and (= column 5) (= row 2)) (choc-cap 1) (sa-cap 1))  ; CHOCMOD
-          ;  (->> (if (= column 5) (choc-cap 1) (sa-cap 1))  ; CHOCMOD
                 (key-place column row)))))
-; TODO: edit this to put choc caps in some places
-; TODO: choc height needs adjustment too
 
-; (pr (rotate-around-y π [10 0 1]))
-; (pr (key-position 1 cornerrow [(/ mount-width 2) (- (/ mount-height 2)) 0]))
 
 ;;;;;;;;;;;;;;;;;;;;
 ;; Web Connectors ;;
@@ -375,11 +363,8 @@
 (def thumborigin 
   (map + (key-position 1 cornerrow [(/ mount-width 2) (- (/ mount-height 2)) 0])
          thumb-offsets))
-; (pr thumborigin)
 
 ; it's about 38 degrees total range of motion, so 9.5 degrees per modifier. call it 10
-
-; these need to go further away (y) and be spaced a little more; don't convex them towards themselves
 
 (defn thumb-tr-place [shape]
   (->> shape
@@ -489,14 +474,6 @@
              (thumb-ml-place web-post-tl)
              (thumb-ml-place web-post-bl))
 
-             ;;/ v1
-            ;  (thumb-br-place web-post-tl)
-            ;  (thumb-br-place web-post-tr)
-            ;  (thumb-bl-place web-post-br)
-            ;  (thumb-mr-place web-post-tl)
-            ;  (thumb-mr-place web-post-tr)
-            ;  (thumb-ml-place web-post-br)
-      ; )
       (triangle-hulls    ; top two to the middle two, starting on the left
              (thumb-tl-place thumb-post-tl)
              (thumb-ml-place web-post-tr)
@@ -621,16 +598,47 @@
   (wall-brace (partial key-place x1 y1) dx1 dy1 post1 
               (partial key-place x2 y2) dx2 dy2 post2))
 
+; Originally 1. We thin the right wall to minimize ground clearance. It can be thicker in the center since that's not what's limiting.
+(def edge-rwff 0.2) ;; right wall flare factor
+(def avg-rwff 0.5)
+(def mid-rwff 0.7) ;; right wall flare factor
+
 (def case-walls
   (union
    ; back wall
    (for [x (range 0 ncols)] (key-wall-brace x 0 0 1 web-post-tl x       0 0 1 web-post-tr))
    (for [x (range 1 ncols)] (key-wall-brace x 0 0 1 web-post-tl (dec x) 0 0 1 web-post-tr))
-   (key-wall-brace lastcol 0 0 1 web-post-tr lastcol 0 1 0 web-post-tr)
+
+   (key-wall-brace lastcol 0 0 1 web-post-tr
+                   lastcol 0 edge-rwff 0 web-post-tr)
    ; right wall
-   (for [y (range 0 lastrow)] (key-wall-brace lastcol y 1 0 web-post-tr lastcol y       1 0 web-post-br))
-   (for [y (range 1 lastrow)] (key-wall-brace lastcol (dec y) 1 0 web-post-br lastcol y 1 0 web-post-tr))
-   (key-wall-brace lastcol cornerrow 0 -1 web-post-br lastcol cornerrow 1 0 web-post-br)
+   ; Yes, this is clunky. All I really want is for these edges to converge to a
+   ; straight line along the Y axis.
+
+   (key-wall-brace lastcol 0 edge-rwff 0 web-post-tr 
+                   lastcol 0 avg-rwff 0 web-post-br) ; key edge
+
+   (key-wall-brace lastcol 0 avg-rwff 0 web-post-br
+                   lastcol 1 edge-rwff 0 web-post-tr) ; tweener
+
+   (key-wall-brace lastcol 1 edge-rwff 0 web-post-tr
+                   lastcol 1 avg-rwff 0 web-post-br) ; edge
+
+   (key-wall-brace lastcol 1 avg-rwff 0 web-post-br
+                   lastcol 2 avg-rwff 0 web-post-tr) ; tweener
+
+   (key-wall-brace lastcol 2 avg-rwff 0 web-post-tr 
+                   lastcol 2 avg-rwff 0 web-post-br) ; edge
+
+   (key-wall-brace lastcol 2 avg-rwff 0 web-post-br
+                   lastcol 3 avg-rwff 0 web-post-tr) ; tweener
+
+   (key-wall-brace lastcol 3 avg-rwff 0 web-post-tr 
+                   lastcol 3 edge-rwff 0 web-post-br) ; edge
+
+   (key-wall-brace lastcol cornerrow 0        -1 web-post-br
+                   lastcol cornerrow edge-rwff 0 web-post-br) ; bottom right corner
+
    ; left wall
    (for [y (range 0 lastrow)] (union (wall-brace (partial left-key-place y 1)       -1 0 web-post (partial left-key-place y -1) -1 0 web-post)
                                      (hull (key-place 0 y web-post-tl)
@@ -645,7 +653,7 @@
    (wall-brace (partial key-place 0 0) 0 1 web-post-tl (partial left-key-place 0 1) 0 1 web-post)
    (wall-brace (partial left-key-place 0 1) 0 1 web-post (partial left-key-place 0 1) -1 0 web-post)
    ; front wall
-   (key-wall-brace lastcol 0 0 1 web-post-tr lastcol 0 1 0 web-post-tr)
+   (key-wall-brace lastcol 0 0 1 web-post-tr lastcol 0 edge-rwff 0 web-post-tr)
    (key-wall-brace 3 lastrow   0 -1 web-post-bl 3 lastrow 0.5 -1 web-post-br)
    (key-wall-brace 3 lastrow 0.5 -1 web-post-br 4 cornerrow 1 -1 web-post-bl)
    (for [x (range 4 ncols)] (key-wall-brace x cornerrow 0 -1 web-post-bl x       cornerrow 0 -1 web-post-br))
@@ -708,16 +716,6 @@
   ;    (thumb-ml-place (translate (wall-locate3 -1 1) web-post-tr))
   ;    (thumb-tl-place thumb-post-tl))
   ))
-
-
-(def rj9-start  (map + [0 -3  0] (key-position 0 0 (map + (wall-locate3 0 1) [0 (/ mount-height  2) 0]))))
-(def rj9-position  [(first rj9-start) (second rj9-start) 11])
-(def rj9-cube   (cube 14.78 13 22.38))
-(def rj9-space  (translate rj9-position rj9-cube))
-(def rj9-holder (translate rj9-position
-                  (difference rj9-cube
-                              (union (translate [0 2 0] (cube 10.78  9 18.38))
-                                     (translate [0 0 5] (cube 10.78 13  5))))))
 
 ; TODO: measure your socket properly so you can have the mag part outside through a 1mm case wall
 (def usb-holder-position (key-position 1 0 (map + (wall-locate2 -0.8 1) [0 (/ mount-height 2) 0])))
@@ -883,31 +881,47 @@
         (key-place column row (translate [0 0 0] (wire-post -1 6)))
         (key-place column row (translate [5 0 0] (wire-post  1 0)))))))
 
+(def side-right
+  (union
+    key-holes
+    connectors
+    thumb
+    thumb-connectors
+    tent-platform
+    (difference
+      (union
+        case-walls
+        screw-insert-outers
+        usb-holder)
+      usb-holder-hole
+      micro-hull-cutout
+      reset-hole
+      screw-insert-holes)
+    ;; caps  ; useful for debugging
+  )
+)
 
-(def model-right (difference
-                   (union
-                    key-holes
-                    connectors
-                    thumb
-                    thumb-connectors
-                    tent-platform
-                    (difference (union case-walls
-                                       screw-insert-outers
-                                      ;  teensy-holder
-                                       usb-holder)
-                                ; rj9-space
-                                usb-holder-hole
-                                micro-hull-cutout
-                                trrs-hole
-                                reset-hole
-                                screw-insert-holes)
-                    ; rj9-holder
-                    ; wire-posts
-                    ; thumbcaps
-                    ; caps
-                    )
-                   (translate [0 0 -20] (cube 350 350 40))
-                  ))
+(def model-right
+  (difference
+    side-right
+    (translate [0 0 -20] (cube 350 350 40))
+))
+
+(def slice
+  (cut (translate [0, 0, -0.01] side-right)
+))
+
+(def wedge
+    ; REMINDER: the entire slice must be on the right-hand-side of the X axis,
+    ; or nothing will come out for extrude-rotate.
+    ; You should have this touching the axis to minimize stack height.
+
+    ; NOTE: decrease fn for faster rendering. Increase for smoother curves at
+    ; output.
+    ; Remove fn altogether for dev and it will be much faster.
+    (binding [*fn* 200] (extrude-rotate {:angle 18}
+      (translate [98, 0, 0] slice)))
+)
 
 (spit "things/right.scad"
       (write-scad model-right))
@@ -940,21 +954,8 @@
 ;                                 ; wire-posts
 ;                   )))
 
-(spit "things/right-plate.scad"
-      (write-scad 
-                   (cut
-                     (translate [0 0 -0.1]
-                       (difference (union case-walls
-                                          teensy-holder
-                                          ; rj9-holder
-                                          screw-insert-outers)
-                                   (translate [0 0 -10] screw-insert-screw-holes))
-                  ))))
-
-; (spit "things/test.scad"
-;       (write-scad 
-;          (difference usb-holder usb-holder-hole)))
-
-
+(spit "things/wedge.scad"
+      (write-scad wedge)
+)
 
 (defn -main [dum] 1)  ; dummy to make it easier to batch

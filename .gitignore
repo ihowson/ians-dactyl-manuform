@@ -8,3 +8,5 @@
 *.gcode
 *.scad
 /target
+
+.SCAD_FLAG
