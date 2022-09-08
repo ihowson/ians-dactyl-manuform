@@ -912,6 +912,7 @@
 ))
 
 (def wedge
+  (rotate [(/ pi 2) 0 0]
     ; REMINDER: the entire slice must be on the right-hand-side of the X axis,
     ; or nothing will come out for extrude-rotate.
     ; You should have this touching the axis to minimize stack height.
@@ -919,9 +920,10 @@
     ; NOTE: decrease fn for faster rendering. Increase for smoother curves at
     ; output.
     ; Remove fn altogether for dev and it will be much faster.
+    ;; (union              (extrude-rotate {:angle 18}
     (binding [*fn* 200] (extrude-rotate {:angle 18}
-      (translate [98, 0, 0] slice)))
-)
+      (translate [98, 0, 0] slice)
+))))
 
 (spit "things/right.scad"
       (write-scad model-right))
