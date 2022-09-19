@@ -920,10 +920,12 @@
     ; NOTE: decrease fn for faster rendering. Increase for smoother curves at
     ; output.
     ; Remove fn altogether for dev and it will be much faster.
-    ;; (union              (extrude-rotate {:angle 18}
-    (binding [*fn* 200] (extrude-rotate {:angle 18}
-      (translate [98, 0, 0] slice)
-))))
+    ;; (union              (extrude-rotate {:angle -18}
+    (binding [*fn* 200] (extrude-rotate {:angle -18}
+      (translate [58, 0, 0]
+        (rotate [0 0 pi]
+          slice)
+)))))
 
 (def plate
   (cut
