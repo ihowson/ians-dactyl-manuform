@@ -1,3 +1,7 @@
+# Ian's Manuform
+
+To generate plate-outline, I haven't found a straightforward way to generate the desired outline from within the Clojure code. Instead, I export to dxf, open it in QCAD, and delete the unwanted inner path.
+
 # The Dactyl-ManuForm Keyboard
 This is a fork of the [Dactyl](https://github.com/adereth/dactyl-keyboard), a parameterized, split-hand, concave, columnar, ergonomic keyboard.
 

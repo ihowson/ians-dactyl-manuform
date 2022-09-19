@@ -925,39 +925,25 @@
       (translate [98, 0, 0] slice)
 ))))
 
-(spit "things/right.scad"
-      (write-scad model-right))
- 
-(spit "things/left.scad"
-      (write-scad (mirror [-1 0 0] model-right)))
-                  
-; (spit "things/right-test.scad"
-;       (write-scad 
-;                    (union
-;                     key-holes
-;                     connectors
-;                     thumb
-;                     thumb-connectors
-;                     case-walls
+(def plate
+  (cut
+    (translate [0 0 -0.1]
+      (difference
+        (union case-walls screw-insert-outers)
+        screw-insert-screw-holes
+))))
 
-;                     ; REMOVE
-;                     thumbcaps
-;                     caps
+(def plate-insulator
+  (scale [0.85 0.85 1.0]
+  (cut
+    (translate [0 0 -0.1]
+      (union case-walls screw-insert-outers)
+))))
 
-;                     ; teensy-holder
-;                     ; rj9-holder
-;                     usb-holder-hole
-;                     ; teensy-holder-hole
-;                     ;             screw-insert-outers 
-;                     ;             teensy-screw-insert-holes
-;                     ;             teensy-screw-insert-outers
-;                     ; usb-cutout 
-;                     ;             rj9-space 
-;                                 ; wire-posts
-;                   )))
-
-(spit "things/wedge.scad"
-      (write-scad wedge)
-)
+(spit "things/plate.scad" (write-scad plate))
+(spit "things/plate-insulator.scad" (write-scad plate-insulator))
+(spit "things/right.scad" (write-scad model-right))
+(spit "things/left.scad" (write-scad (mirror [-1 0 0] model-right)))
+(spit "things/wedge.scad" (write-scad wedge))
 
 (defn -main [dum] 1)  ; dummy to make it easier to batch
